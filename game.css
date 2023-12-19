@@ -1,0 +1,79 @@
+body
+{
+	margin: 0;
+}
+
+.board
+{
+	border-spacing: 0;
+}
+
+#team .title input
+{
+	font-size: 200%;
+	border: 0;
+	padding: 0;
+}
+
+#team .title a
+{
+	text-decoration: none;
+	vertical-align: super;
+}
+
+#team .counter
+{
+	font-size: 200%;
+}
+
+#wheel-table
+{
+	border-spacing: 0;
+}
+
+td.wheel-cell
+{
+    background-image: url(wheel-frame.png);
+    background-position: top;
+    background-repeat: no-repeat;
+    background-size: contain;
+    padding: 0;
+}
+
+#challenges h4
+{
+	font-weight: normal;
+	margin-bottom: 1ch;
+}
+
+#challenges h4 a
+{
+	text-decoration: none;
+}
+
+#challenges ul
+{
+	margin-top: 0;
+	padding-inline-start: 5ch;
+}
+
+#popup-bg
+{
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background: rgba(0,0,0,.8);
+	display: none;
+}
+
+#popup-img
+{
+	position: absolute;
+	margin: auto;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}

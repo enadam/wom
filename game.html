@@ -1,0 +1,762 @@
+<HTML>
+<HEAD>
+	<META charset="utf-8">
+	<TITLE>Wheel of Misfortune</TITLE>
+	<LINK rel="stylesheet" href="game.css" type="text/css"/>
+	<SCRIPT type="text/javascript" src="https://cdn.jsdelivr.net/gh/zarocknz/javascript-winwheel/Winwheel.min.js"></SCRIPT>
+	<SCRIPT type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TweenMax.min.js"></SCRIPT>
+	<SCRIPT type="text/javascript" src="challenges.js"></SCRIPT>
+</HEAD>
+
+<BODY>
+<TABLE id="wheel-table"></TABLE>
+<DIV style="clear: both; height: 5%"></DIV>
+
+<TABLE width="100%">
+	<TR>
+		<TD align="left" width="20%"><BUTTON onclick="fullscreen()">
+			Toggle fullscreen
+		</BUTTON></TD>
+		<TD align="center" width="20%"><BUTTON onclick="location.reload()">
+			Reload page
+		</BUTTON></TD>
+		<TD align="right" width="20%"><BUTTON onclick="reset()">
+			Reset game
+		</BUTTON></TD>
+	</TR>
+</TABLE>
+
+<UL id="sounds" style="display: none;">
+	<LI><INPUT type="radio" name="sounds" id="random" value="random">
+		<LABEL for="random">random
+	</INPUT>
+	<LI><INPUT type="radio" name="sounds" id="seq" value="seq">
+		<LABEL for="seq">sequential
+	</INPUT>
+</UL>
+
+<DIV id="challenges"><H2>Challenges</H2></DIV>
+
+<DIV id="popup-bg"></DIV>
+
+<SCRIPT>
+function is_portrait()
+{
+	return window.innerWidth <= window.innerHeight;
+}
+
+function local_storage_get(namespace, item, dflt)
+{
+	let key = namespace + "." + item;
+	let value = localStorage.getItem(key);
+	if (value != null)
+		return value;
+	else
+		return dflt;
+}
+
+function local_storage_set(namespace, item, value)
+{
+	let key = namespace + "." + item;
+	localStorage.setItem(key, value);
+}
+
+function fullscreen()
+{
+	if (!document.fullscreenElement)
+		document.documentElement.requestFullscreen();
+	else
+		document.exitFullscreen();
+}
+
+function reset()
+{
+	if (confirm("Reset game?"))
+	{
+		localStorage.clear();
+		location.reload();
+	}
+}
+
+function LeftBoard()
+{
+	this.table = document.createElement("TABLE");
+	this.table.classList.add("board");
+	this.table.align = "left";
+}
+
+LeftBoard.prototype.resize = function(center, width)
+{
+	this.table.width = width;
+	if (this.table.parentElement == null)
+		center.parentElement.insertBefore(this.table, center);
+	if (is_portrait())
+		this.table.style.borderRight = "solid";
+	else
+		this.table.style.borderRight = "none";
+}
+
+LeftBoard.prototype.add_row = function(title, counter)
+{
+	title.align = "center";
+	title.classList.add("title");
+
+	counter.align = "right";
+	counter.classList.add("counter");
+
+	let row = document.createElement("TR");
+	row.appendChild(title);
+	row.appendChild(counter);
+	this.table.appendChild(row);
+	return row;
+}
+
+LeftBoard.prototype.nrows = function()
+{
+	return this.table.childElementCount;
+}
+
+function RightBoard()
+{
+	this.table = document.createElement("TABLE");
+	this.table.classList.add("board");
+	this.table.align = "right";
+}
+
+RightBoard.prototype.resize = function(center, width)
+{
+	this.table.width = width;
+	if (is_portrait())
+	{
+		if (this.table.nextSibling != center)
+		{
+			center.align = "center";
+			center.parentElement.insertBefore(this.table, center);
+		}
+		this.table.style.borderLeft = "solid";
+	} else
+	{
+		if (center.nextSibling != this.table)
+		{
+			center.align = "left";
+			center.parentElement.insertBefore(this.table, center.nextSibling);
+		}
+		this.table.style.borderLeft = "none";
+	}
+}
+
+RightBoard.prototype.add_row = function(title, counter)
+{
+	title.align = "center";
+	title.classList.add("title");
+
+	counter.align = "left";
+	counter.classList.add("counter");
+
+	let row = document.createElement("TR");
+	row.appendChild(counter);
+	row.appendChild(title);
+	this.table.appendChild(row);
+	return row;
+}
+
+RightBoard.prototype.nrows = function()
+{
+	return this.table.childElementCount;
+}
+
+function Team(board, id)
+{
+	let self = this;
+
+	let title = document.createElement("TD");
+	let minus_1 = document.createElement("A");
+	minus_1.href = "javascript:void(0)";
+	minus_1.appendChild(document.createTextNode("←"));
+	title.appendChild(minus_1);
+	title.appendChild(document.createTextNode(" "));
+
+	let minus_05 = document.createElement("A");
+	minus_05.href = "javascript:void(0)";
+	minus_05.appendChild(document.createTextNode("↓"));
+	title.appendChild(minus_05);
+	title.appendChild(document.createTextNode(" "));
+
+	let input = document.createElement("INPUT");
+	input.type = "text";
+	input.value = local_storage_get("Team", id, id);
+	title.appendChild(input);
+	title.appendChild(document.createTextNode(" "));
+
+	let input_resize = function()
+	{
+		let style = window.getComputedStyle(input);
+		let font_family = style.getPropertyValue("font-family");
+		let font_size = style.getPropertyValue("font-size");
+		let font_weight = style.getPropertyValue("font-weight");
+
+		let canvas = document.createElement("CANVAS");
+		let context = canvas.getContext("2d");
+		context.font = font_weight + " " + font_size + " " + font_family;
+
+		input.style.width = Math.ceil(context.measureText(input.value).width) + 1;
+	};
+	input.addEventListener("focusin", function()
+	{
+		input.style.width = null;
+	});
+	input.addEventListener("focusout", input_resize);
+	input.addEventListener("input", function()
+	{
+		local_storage_set("Team", id, input.value);
+	});
+	window.addEventListener("load", input_resize);
+
+	let plus_05 = document.createElement("A");
+	plus_05.href = "javascript:void(0)";
+	plus_05.appendChild(document.createTextNode("↑"));
+	title.appendChild(plus_05);
+	title.appendChild(document.createTextNode(" "));
+
+	let plus_1 = document.createElement("A");
+	plus_1.href = "javascript:void(0)";
+	plus_1.appendChild(document.createTextNode("→"));
+	title.appendChild(plus_1);
+
+	minus_1.onclick  = function() { self.update(-1)   }
+	minus_05.onclick = function() { self.update(-0.5) }
+	plus_05.onclick  = function() { self.update(+0.5) }
+	plus_1.onclick   = function() { self.update(+1)   }
+
+	this.current = 0;
+	this.counter = document.createTextNode("0");
+
+	let points = document.createElement("TD");
+	points.appendChild(this.counter);
+
+	let row = board.add_row(title, points);
+	row.id = "team";
+}
+
+Team.prototype.update = function(diff)
+{
+	this.current += diff;
+	if (this.current < 0)
+		this.current = 0;
+	this.counter.nodeValue = this.current;
+}
+
+function Game()
+{
+	let self = this;
+
+	let table = document.getElementById("wheel-table");
+	table.align = "center";
+
+	let row = document.createElement("TR");
+	let cell = document.createElement("TD");
+	cell.classList.add("wheel-cell");
+
+	cell.onclick = function(e) {
+		if (e.srcElement == cell)
+		{
+			self.challenge();
+			return;
+		}
+
+		let diff_x = self.wheel.centerX - e.offsetX;
+		let diff_y = self.wheel.centerY - e.offsetY;
+		let d = Math.sqrt(diff_x*diff_x + diff_y*diff_y);
+		if (d <= self.wheel.innerRadius)
+			self.spin();
+	};
+
+	let canvas = document.createElement("CANVAS");
+	canvas.id = "wheel_canvas";
+	cell.appendChild(canvas);
+
+	row.appendChild(cell);
+	table.appendChild(row);
+
+	this.center = new Image();
+	this.center.src = "spiral.png";
+
+	this.wheel = new Winwheel({
+		"canvasId":		canvas.id,
+		"textOrientation":	"vertical",
+		"textAlignment":	"outer",
+		"numSegments":		0,
+		"pins":
+		{
+			"number":	4,
+			"fillStyle":	"silver",
+		},
+		"animation":
+		{
+			"type":			"spinToStop",
+			"duration":		10,
+			"spins":		0,
+			"callbackAfter":	function() { self.draw_center() },
+			"callbackSound":	function() { self.tick() },
+			"callbackFinished":	function() { self.done() },
+			"soundTrigger":		"pin",
+		},
+	});
+
+	this.left = new LeftBoard();
+	new Team(this.left, "Left");
+
+	this.right = new RightBoard();
+	new Team(this.right, "Right");
+
+	this.sounds =
+	[
+		new Audio("sounds/tick.wav"),
+		new Audio("sounds/clock.wav"),
+		new Audio("sounds/frying_pan-1.wav"),
+		new Audio("sounds/frying_pan-2.wav"),
+		new Audio("sounds/metal_bang.wav"),
+		new Audio("sounds/metal_clang.wav"),
+		new Audio("sounds/swords.wav"),
+		new Audio("sounds/drums.wav"),
+		new Audio("sounds/cowbell.wav"),
+	];
+
+	let sounds = document.getElementById("sounds");
+	for (let sound in this.sounds)
+	{
+		let url = new URL(this.sounds[sound].src);
+		let name = url.pathname.split("/").reverse()[0].split(".")[0];
+
+		let item = document.createElement("LI");
+		let radio = document.createElement("INPUT");
+		radio.type = "radio";
+		radio.name = "sounds";
+		radio.id = name;
+		radio.value = sound;
+
+		let label = document.createElement("LABEL");
+		label.htmlFor = name;
+		label.appendChild(document.createTextNode(name));
+
+		item.appendChild(radio);
+		item.appendChild(label);
+		sounds.appendChild(item);
+	}
+
+	this.challenges = document.getElementById("challenges");
+
+	this.topics = [ ];
+	this.colors = [
+		"#FF0000", "#FFFF00", "#00EAFF", "#FF7F00", "#BFFF00",
+		"#0095FF", "#FF00AA", "#FFD400", "#6AFF00",
+	]
+
+	window.onresize = function()
+	{
+		self.resize(table, cell, canvas);
+		self.wheel.draw();
+		self.draw_center();
+	};
+	self.resize(table, cell, canvas);
+
+	window.onload = function() { self.update_wheel() };
+}
+
+Game.prototype.resize = function(table, cell, canvas)
+{
+	let background_width = 438;
+	let background_height = 559;
+	let circle_center_y = 266.5;
+	let cell_width = window.innerWidth;
+	let cell_height = window.innerHeight;
+	let scale_factor = 1;
+	if (is_portrait())
+	{
+		scale_factor = cell_width / background_width;
+		cell_height = background_height * scale_factor;
+	} else
+	{
+		scale_factor = cell_height / background_height;
+		cell_width = background_width * scale_factor;
+	}
+
+	cell.width = cell_width;
+	cell.height = cell_height;
+
+	canvas.width = cell.width;
+	canvas.height = canvas.width;
+
+	this.wheel.centerX = canvas.width / 2;
+	this.wheel.centerY = circle_center_y * (canvas.height / background_height),
+
+	this.wheel.outerRadius = 212 * scale_factor;
+	this.wheel.innerRadius = 75 * scale_factor;
+	this.wheel.textFontSize = 22 * scale_factor;
+	this.wheel.pins.outerRadius = 4 * scale_factor;
+
+	let board_width = null;
+	if (is_portrait())
+		board_width = "50%";
+	else
+		board_width = (window.innerWidth - cell_width) / 2 - 10;
+	this.left.resize(table, board_width)
+	this.right.resize(table, board_width)
+}
+
+Game.prototype.next_color = function()
+{
+	return this.colors[this.topics.length % this.colors.length];
+}
+
+Game.prototype.add_topic = function(topic, title, counter, section)
+{
+	this.topics.push(topic);
+
+	let row = null;
+	if (this.left.nrows() <= this.right.nrows())
+		row = this.left.add_row(title, counter);
+	else
+		row = this.right.add_row(title, counter);
+
+	this.challenges.appendChild(section);
+
+	return row;
+}
+
+Game.prototype.update_wheel = function()
+{
+	let nchallenges = 0;
+	for (let topic of this.topics)
+		if (topic.enabled)
+			nchallenges += topic.nchallenges();
+
+	for (let topic of this.topics)
+		topic.update_wheel(this.wheel, nchallenges);
+
+	this.wheel.updateSegmentSizes();
+	this.wheel.draw();
+	this.draw_center();
+}
+
+Game.prototype.draw_center = function()
+{
+	this.wheel.ctx.save();
+	this.wheel.ctx.translate(this.wheel.centerX, this.wheel.centerY);
+	this.wheel.ctx.rotate(this.wheel.rotationAngle);
+	this.wheel.ctx.drawImage(
+		this.center,
+		-this.wheel.innerRadius / 2, -this.wheel.innerRadius / 2,
+		this.wheel.innerRadius, this.wheel.innerRadius);
+	this.wheel.ctx.restore();
+}
+
+Game.prototype.spin = function(respin)
+{
+	let sound = document.querySelector('input[name="sounds"]:checked');
+	if (sound == null || sound.value == "random")
+	{
+		this.sound = Math.floor(Math.random() * this.sounds.length);
+	} else if (sound.value == "seq")
+	{
+		if (this.sound == null || this.sound + 1 >= this.sounds.length)
+			this.sound = 0;
+		else
+			this.sound++;
+	} else
+		this.sound = sound.value;
+
+	let spins = Math.random() * 2*4 - 4;
+	if (spins >= 0)
+		spins += 2;
+	else
+		spins -= 2;
+	this.wheel.animation.stopAngle += spins * 360;
+
+	if (!respin)
+		this.wheel.animation.easing = "Power3.easeOut";
+	this.wheel.startAnimation();
+}
+
+Game.prototype.done = function()
+{
+	if (Math.random() < 1/3)
+	{
+		this.wheel.animation.easing = "Power1.easeInOut";
+		this.spin(true);
+	}
+}
+
+Game.prototype.tick = function()
+{
+	sound = this.sounds[this.sound];
+	sound.pause();
+	sound.currentTime = 0;
+	sound.play();
+}
+
+Game.prototype.challenge = function()
+{
+	let segment = this.wheel.getIndicatedSegment();
+	for (let topic of this.topics)
+		if (topic.segment == segment)
+			topic.challenge();
+}
+
+function Topic(game, topic, label)
+{
+	let self = this;
+
+	let title = document.createElement("TD");
+	title.appendChild(document.createTextNode(topic));
+
+	let counter = document.createElement("TD");
+	this.counter = document.createTextNode("0");
+	counter.appendChild(this.counter);
+
+	let header = document.createElement("H3");
+	header.appendChild(document.createTextNode(topic));
+
+	this.section = document.createElement("DIV");
+	this.section.appendChild(header);
+
+	this.game = game;
+	this.topic = topic;
+	this.label = label != null ? label : topic;
+	this.color = game.next_color();
+	this.enabled = local_storage_get("Topic", topic, "true") == "true";
+	this.segment = null;
+	this.challenges = [ ];
+
+	this.row = game.add_topic(this, title, counter, this.section);
+	this.row.onclick = function() { self.toggle() };
+}
+
+Topic.prototype.add_challenge = function(challenge)
+{
+	let n = this.challenges.length;
+	this.challenges.push(challenge);
+	this.section.appendChild(challenge.widget);
+	return this.topic + "_" + n;
+}
+
+Topic.prototype.nchallenges = function()
+{
+	let n = 0;
+	for (let challenge of this.challenges)
+		if (!challenge.used())
+			n++;
+	return n;
+}
+
+Topic.prototype.challenge = function()
+{
+	for (let challenge of this.challenges)
+		if (!challenge.used())
+		{
+			challenge.goto();
+			break;
+		}
+}
+
+Topic.prototype.update_wheel = function(wheel, total_challenges)
+{
+	let nchallenges = this.nchallenges();
+	this.counter.nodeValue = nchallenges;
+
+	if (this.enabled && nchallenges > 0)
+		this.row.style.background = this.color;
+	else
+		this.row.style.background = "#DDDDDD";
+
+	let width = (nchallenges / total_challenges) * 360;
+	if (nchallenges > 0 && this.enabled)
+	{
+		if (this.segment == null)
+			this.segment = wheel.addSegment({
+				"text": this.label,
+				"fillStyle": this.color,
+			});
+		this.segment["size"] = width;
+	} else if (this.segment != null && wheel.numSegments > 1)
+	{
+		for (let i = 1; i <= wheel.numSegments; i++)
+		{
+			if (wheel.segments[i] == this.segment)
+			{
+				wheel.deleteSegment(i);
+				break;
+			}
+		}
+		this.segment = null;
+	}
+}
+
+Topic.prototype.update = function()
+{
+	this.game.update_wheel();
+}
+
+Topic.prototype.toggle = function()
+{
+	this.enabled = !this.enabled;
+	local_storage_set("Topic", this.topic, this.enabled);
+	this.update();
+}
+
+function Challenge(topic, challenge, hints)
+{
+	let self = this;
+
+	this.widget = document.createElement("DIV");
+	let header = document.createElement("H4");
+
+	this.done = document.createElement("INPUT");
+	this.done.type = "checkbox";
+	this.done.onchange = function() { self.toggle() };
+	header.appendChild(this.done);
+
+	header.appendChild(document.createTextNode(" "));
+	header.appendChild(document.createTextNode(challenge));
+	header.appendChild(document.createTextNode(" "));
+
+	let link = document.createElement("A");
+	link.href = "javascript:void(0)";
+	link.onclick = function()
+	{
+		let body = document.getElementsByTagName("body")[0];
+		body.scrollIntoView({ "behavior":  "smooth" });
+	};
+	link.appendChild(document.createTextNode("⏎"));
+	header.appendChild(link);
+
+	this.widget.appendChild(header);
+
+	this.topic = topic;
+	this.id = topic.add_challenge(this);
+
+	if (hints != null)
+	{
+		let list = document.createElement("UL");
+		list.id = this.id;
+		list.style.display = "none";
+		for (let hint of hints)
+		{
+			let item = document.createElement("LI");
+			if (typeof hint == "string")
+			{
+				item.appendChild(document.createTextNode(hint));
+			} else if (hint[0] == "image")
+			{
+				let link = document.createElement("A");
+				link.href = "javascript:void(0)";
+				link.onclick = function()
+				{
+					let img = new Image();
+					img.src = hint[1];
+					img.onload = function() { self.popup(img); };
+				};
+				link.appendChild(document.createTextNode(hint[2]));
+				item.appendChild(link);
+			} else if (hint[0] == "audio")
+			{
+				let audio = document.createElement("AUDIO");
+				audio.src = hint[1];
+				audio.controls = true;
+				audio.style.verticalAlign = "middle";
+				item.appendChild(audio);
+			}
+			list.appendChild(item);
+		}
+		this.widget.appendChild(list);
+		this.widget.onclick = function(event)
+		{
+			if (event.target == header)
+			{
+				if (list.style.display == "none")
+					list.style.display = "block";
+				else
+					list.style.display = "none";
+			}
+		};
+	}
+
+	this.done.checked = local_storage_get("Challenge", this.id, "false") == "true";
+	this.update_color();
+}
+
+Challenge.prototype.used = function()
+{
+	return this.done.checked;
+}
+
+Challenge.prototype.update_color = function()
+{
+	if (this.used())
+		this.widget.style.background = "#00FF00";
+	else
+		this.widget.style.background = "";
+
+	let id = `${this.id}.audio-controls-style`;
+	let style = document.getElementById(id);
+	if (style != null)
+		style.remove();
+
+	style = document.createElement("STYLE");
+	style.id = id;
+	style.appendChild(document.createTextNode(`
+		#challenges #${this.id} audio::-webkit-media-controls-panel
+		{ background-color: ${this.widget.style.background}; }`));
+	document.head.appendChild(style);
+}
+
+Challenge.prototype.toggle = function()
+{
+	local_storage_set("Challenge", this.id, this.used());
+	this.update_color();
+	this.topic.update();
+}
+
+Challenge.prototype.goto = function()
+{
+	this.widget.scrollIntoView({ "behavior":  "smooth" });
+}
+
+Challenge.prototype.popup = function(img)
+{
+	let popup = document.getElementById("popup-bg");
+
+	img.id = "popup-img";
+	if (img.height / img.width < window.innerHeight / window.innerWidth)
+		img.style.width = "100%";
+	else
+		img.style.height = "100%";
+
+	popup.appendChild(img);
+
+	popup.style.display = "block";
+	popup.onclick = function(event)
+	{
+		if (event.target == popup)
+		{
+			popup.style.display = "none";
+			popup.removeChild(img);
+		}
+	}
+}
+
+let game = new Game();
+
+for (let data of challenges)
+{
+	let topic = new Topic(game, data["topic"], data["short"]);
+	for (data of data["challenges"])
+	{
+		let challenge = data[0];
+		data.splice(0, 1);
+		new Challenge(topic, challenge, data.length > 0 ? data : null);
+	}
+}
+</SCRIPT>
+</BODY>
+</HTML>

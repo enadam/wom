@@ -348,6 +348,9 @@ challenges =
 				"He was named after two people who played a significant role in Harry's life.",
 			],
 			[
+				"Which species are not in The Lord of the Rings: elves, ogres, orcs, dwarves, imps, trolls, walking trees",
+			],
+			[
 				"Continue: \"Uram, a késemért jöttem!\"",
 				"Rejtő Jenő",
 			],

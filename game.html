@@ -322,7 +322,9 @@ function Game(settings)
 	table.appendChild(row);
 
 	this.center = new Image();
-	this.center.src = "spiral.png";
+	this.center.src = settings["center_img"] || "spiral.png";
+	self.center_scale = settings["center_scale"] || 0.5;
+	self.center_rotation = settings["center_rotation"] || 1;
 
 	this.wheel = new Winwheel({
 		"canvasId":		canvas.id,
@@ -347,10 +349,10 @@ function Game(settings)
 	});
 
 	this.left = new LeftBoard();
-	new Team(this.left, "Left");
+	new Team(this.left, settings["team_left"] || "Left");
 
 	this.right = new RightBoard();
-	new Team(this.right, "Right");
+	new Team(this.right, settings["team_right"] || "Right");
 
 	this.sounds =
 	[
@@ -497,11 +499,13 @@ Game.prototype.draw_center = function()
 {
 	this.wheel.ctx.save();
 	this.wheel.ctx.translate(this.wheel.centerX, this.wheel.centerY);
-	this.wheel.ctx.rotate(this.wheel.rotationAngle);
+	this.wheel.ctx.rotate(this.wheel.rotationAngle * this.center_rotation);
 	this.wheel.ctx.drawImage(
 		this.center,
-		-this.wheel.innerRadius / 2, -this.wheel.innerRadius / 2,
-		this.wheel.innerRadius, this.wheel.innerRadius);
+		-this.wheel.innerRadius * this.center_scale,
+		-this.wheel.innerRadius * this.center_scale,
+		this.wheel.innerRadius * this.center_scale * 2,
+		this.wheel.innerRadius * this.center_scale * 2);
 	this.wheel.ctx.restore();
 }
 

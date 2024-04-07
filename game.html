@@ -101,12 +101,16 @@ LeftBoard.prototype.add_row = function(title, counter)
 	title.align = "center";
 	title.classList.add("title");
 
-	counter.align = "right";
-	counter.classList.add("counter");
+	if (counter != null)
+	{
+		counter.align = "right";
+		counter.classList.add("counter");
+	} else
+		title.setAttribute("colspan", 2);
 
 	let row = document.createElement("TR");
 	row.appendChild(title);
-	row.appendChild(counter);
+	row.appendChild(counter != null ? counter : document.createElement("TD"));
 	this.table.appendChild(row);
 	return row;
 }
@@ -150,11 +154,15 @@ RightBoard.prototype.add_row = function(title, counter)
 	title.align = "center";
 	title.classList.add("title");
 
-	counter.align = "left";
-	counter.classList.add("counter");
+	if (counter != null)
+	{
+		counter.align = "left";
+		counter.classList.add("counter");
+	} else
+		title.setAttribute("colspan", 2);
 
 	let row = document.createElement("TR");
-	row.appendChild(counter);
+	row.appendChild(counter != null ? counter : document.createElement("TD"));
 	row.appendChild(title);
 	this.table.appendChild(row);
 	return row;
@@ -246,9 +254,32 @@ Team.prototype.update = function(diff)
 	this.counter.nodeValue = this.current;
 }
 
-function Game()
+function Challenges() { }
+Object.setPrototypeOf(Challenges.prototype, Array.prototype);
+
+Challenges.prototype.goto = function()
+{
+	for (let challenge of this)
+		if (!challenge.used())
+		{
+			challenge.goto();
+			break;
+		}
+}
+
+Challenges.prototype.nunused = function()
+{
+	let n = 0;
+	for (let challenge of this)
+		if (!challenge.used())
+			n++;
+	return n;
+}
+
+function Game(settings)
 {
 	let self = this;
+	self.multi_topic = settings["multi_topic"];
 
 	let table = document.getElementById("wheel-table");
 	table.align = "center";
@@ -344,7 +375,9 @@ function Game()
 		sounds.appendChild(item);
 	}
 
-	this.challenges = document.getElementById("challenges");
+	this.challenges_widget = document.getElementById("challenges");
+	if (!self.multi_topic)
+		this.challenges = new Challenges()
 
 	this.topics = [ ];
 	this.colors = [
@@ -419,9 +452,18 @@ Game.prototype.add_topic = function(topic, title, counter, section)
 	else
 		row = this.right.add_row(title, counter);
 
-	this.challenges.appendChild(section);
+	if (this.multi_topic)
+		this.challenges_widget.appendChild(section);
 
 	return row;
+}
+
+Game.prototype.add_challenge = function(challenge)
+{
+	let n = this.challenges.length;
+	this.challenges.push(challenge);
+	this.challenges_widget.appendChild(challenge.widget);
+	return "challenge_" + n;
 }
 
 Game.prototype.update_wheel = function()
@@ -497,10 +539,14 @@ Game.prototype.tick = function()
 
 Game.prototype.challenge = function()
 {
-	let segment = this.wheel.getIndicatedSegment();
-	for (let topic of this.topics)
-		if (topic.segment == segment)
-			topic.challenge();
+	if (this.multi_topic)
+	{
+		let segment = this.wheel.getIndicatedSegment();
+		for (let topic of this.topics)
+			if (topic.segment == segment)
+				topic.challenge();
+	} else
+		this.challenges.goto();
 }
 
 function Topic(game, topic, label)
@@ -510,15 +556,20 @@ function Topic(game, topic, label)
 	let title = document.createElement("TD");
 	title.appendChild(document.createTextNode(topic));
 
-	let counter = document.createElement("TD");
-	this.counter = document.createTextNode("0");
-	counter.appendChild(this.counter);
+	let counter = null;
+	if (game.multi_topic)
+	{
+		counter = document.createElement("TD");
+		this.counter = document.createTextNode("0");
+		counter.appendChild(this.counter);
 
-	let header = document.createElement("H3");
-	header.appendChild(document.createTextNode(topic));
+		let header = document.createElement("H3");
+		header.appendChild(document.createTextNode(topic));
 
-	this.section = document.createElement("DIV");
-	this.section.appendChild(header);
+		this.section = document.createElement("DIV");
+		this.section.appendChild(header);
+	} else
+		this.counter = this.section = null;
 
 	this.game = game;
 	this.topic = topic;
@@ -526,7 +577,7 @@ function Topic(game, topic, label)
 	this.color = game.next_color();
 	this.enabled = local_storage_get("Topic", topic, "true") == "true";
 	this.segment = null;
-	this.challenges = [ ];
+	this.challenges = game.multi_topic ? new Challenges() : null;
 
 	this.row = game.add_topic(this, title, counter, this.section);
 	this.row.onclick = function() { self.toggle() };
@@ -542,27 +593,19 @@ Topic.prototype.add_challenge = function(challenge)
 
 Topic.prototype.nchallenges = function()
 {
-	let n = 0;
-	for (let challenge of this.challenges)
-		if (!challenge.used())
-			n++;
-	return n;
+	return this.challenges != null ? this.challenges.nunused() : 1;
 }
 
 Topic.prototype.challenge = function()
 {
-	for (let challenge of this.challenges)
-		if (!challenge.used())
-		{
-			challenge.goto();
-			break;
-		}
+	this.challenges.goto();
 }
 
 Topic.prototype.update_wheel = function(wheel, total_challenges)
 {
 	let nchallenges = this.nchallenges();
-	this.counter.nodeValue = nchallenges;
+	if (this.counter != null)
+		this.counter.nodeValue = nchallenges;
 
 	if (this.enabled && nchallenges > 0)
 		this.row.style.background = this.color;
@@ -632,7 +675,8 @@ function Challenge(topic, challenge, hints)
 
 	this.widget.appendChild(header);
 
-	this.topic = topic;
+	if (topic instanceof(Topic))
+		this.topic = topic;
 	this.id = topic.add_challenge(this);
 
 	if (hints != null)
@@ -714,12 +758,13 @@ Challenge.prototype.toggle = function()
 {
 	local_storage_set("Challenge", this.id, this.used());
 	this.update_color();
-	this.topic.update();
+	if (this.topic != null)
+		this.topic.update();
 }
 
 Challenge.prototype.goto = function()
 {
-	this.widget.scrollIntoView({ "behavior":  "smooth" });
+	this.widget.scrollIntoView({ "behavior":  "smooth", "block": "end" });
 }
 
 Challenge.prototype.popup = function(img)
@@ -745,17 +790,35 @@ Challenge.prototype.popup = function(img)
 	}
 }
 
-let game = new Game();
-
-for (let data of challenges)
+function add_challenges(topic, challenges)
 {
-	let topic = new Topic(game, data["topic"], data["short"]);
-	for (data of data["challenges"])
+	for (data of challenges)
 	{
 		let challenge = data[0];
 		data.splice(0, 1);
 		new Challenge(topic, challenge, data.length > 0 ? data : null);
 	}
+}
+
+multi_topic = typeof(participants) === "undefined"
+let game = new Game({"multi_topic": multi_topic});
+
+if (multi_topic)
+{
+	for (let data of challenges)
+	{
+		let topic = new Topic(game, data["topic"], data["short"]);
+		add_challenges(topic, data["challenges"])
+	}
+} else
+{
+	for (let participant of participants)
+		if (typeof(participant) == "string")
+			new Topic(game, participant);
+		else
+			new Topic(game, participant[0], participant[1]);
+
+	add_challenges(game, challenges);
 }
 </SCRIPT>
 </BODY>

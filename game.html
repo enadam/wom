@@ -286,6 +286,13 @@ function Game(settings)
 	let self = this;
 	self.multi_topic = settings["multi_topic"];
 
+	self.spins_lo = settings["spins_lo"];
+	self.spins_hi = settings["spins_hi"];
+	if (self.spins_lo == null)
+		self.spins_lo = 0;
+	if (self.spins_hi == null)
+		self.spins_hi = self.spins_lo + 4;
+
 	let table = document.getElementById("wheel-table");
 	table.align = "center";
 
@@ -330,7 +337,7 @@ function Game(settings)
 		"animation":
 		{
 			"type":			"spinToStop",
-			"duration":		10,
+			"duration":		settings["spin_duration"] || 10,
 			"spins":		0,
 			"callbackAfter":	function() { self.draw_center() },
 			"callbackSound":	function() { self.tick() },
@@ -513,11 +520,11 @@ Game.prototype.spin = function(respin)
 	} else
 		this.sound = sound.value;
 
-	let spins = Math.random() * 2*4 - 4;
+	let spins = (Math.random() * 2 - 1) * (this.spins_hi - this.spins_lo);
 	if (spins >= 0)
-		spins += 2;
+		spins += this.spins_lo;
 	else
-		spins -= 2;
+		spins -= this.spins_lo;
 	this.wheel.animation.stopAngle += spins * 360;
 
 	if (!respin)
@@ -805,10 +812,12 @@ function add_challenges(topic, challenges)
 	}
 }
 
-multi_topic = typeof(participants) === "undefined"
-let game = new Game({"multi_topic": multi_topic});
+if (typeof(settings) === "undefined")
+	settings = { };
+settings["multi_topic"] = (typeof(participants) === "undefined");
+let game = new Game(settings);
 
-if (multi_topic)
+if (game.multi_topic)
 {
 	for (let data of challenges)
 	{

@@ -1,3 +1,10 @@
+settings =
+{
+	"spins_lo": 2,
+	"spins_hi": 6,
+	"spin_duration": 10,
+};
+
 challenges =
 [
 	{

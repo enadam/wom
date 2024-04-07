@@ -78,16 +78,43 @@ function reset()
 	}
 }
 
-function LeftBoard()
+function Board(n)
 {
 	this.table = document.createElement("TABLE");
 	this.table.classList.add("board");
+}
+
+Board.prototype.resize = function(width)
+{
+	this.table.width = width;
+}
+
+Board.prototype.add_row = function(title)
+{
+	title.align = "center";
+	title.classList.add("title");
+
+	let row = document.createElement("TR");
+	row.appendChild(title);
+	this.table.appendChild(row);
+	return row;
+}
+
+Board.prototype.nrows = function()
+{
+	return this.table.childElementCount;
+}
+
+function LeftBoard()
+{
+	Board.call(this);
 	this.table.align = "left";
 }
+Object.setPrototypeOf(LeftBoard.prototype, Board.prototype);
 
 LeftBoard.prototype.resize = function(center, width)
 {
-	this.table.width = width;
+	Board.prototype.resize.call(this, width);
 	if (this.table.parentElement == null)
 		center.parentElement.insertBefore(this.table, center);
 	if (is_portrait())
@@ -98,38 +125,27 @@ LeftBoard.prototype.resize = function(center, width)
 
 LeftBoard.prototype.add_row = function(title, counter)
 {
-	title.align = "center";
-	title.classList.add("title");
-
+	row = Board.prototype.add_row.call(this, title);
 	if (counter != null)
 	{
 		counter.align = "right";
 		counter.classList.add("counter");
+		row.appendChild(counter);
 	} else
 		title.setAttribute("colspan", 2);
-
-	let row = document.createElement("TR");
-	row.appendChild(title);
-	row.appendChild(counter != null ? counter : document.createElement("TD"));
-	this.table.appendChild(row);
 	return row;
-}
-
-LeftBoard.prototype.nrows = function()
-{
-	return this.table.childElementCount;
 }
 
 function RightBoard()
 {
-	this.table = document.createElement("TABLE");
-	this.table.classList.add("board");
+	Board.call(this);
 	this.table.align = "right";
 }
+Object.setPrototypeOf(RightBoard.prototype, Board.prototype);
 
 RightBoard.prototype.resize = function(center, width)
 {
-	this.table.width = width;
+	Board.prototype.resize.call(this, width);
 	if (is_portrait())
 	{
 		if (this.table.nextSibling != center)
@@ -151,26 +167,15 @@ RightBoard.prototype.resize = function(center, width)
 
 RightBoard.prototype.add_row = function(title, counter)
 {
-	title.align = "center";
-	title.classList.add("title");
-
+	row = Board.prototype.add_row.call(this, title);
 	if (counter != null)
 	{
 		counter.align = "left";
 		counter.classList.add("counter");
+		row.insertBefore(counter, title);
 	} else
 		title.setAttribute("colspan", 2);
-
-	let row = document.createElement("TR");
-	row.appendChild(counter != null ? counter : document.createElement("TD"));
-	row.appendChild(title);
-	this.table.appendChild(row);
 	return row;
-}
-
-RightBoard.prototype.nrows = function()
-{
-	return this.table.childElementCount;
 }
 
 function Team(board, id)

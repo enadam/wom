@@ -734,8 +734,11 @@ function Challenge(topic, challenge, hints)
 			if (event.target == header)
 			{
 				if (list.style.display == "none")
+				{
 					list.style.display = "block";
-				else
+					if (list.getBoundingClientRect().bottom > window.innerHeight)
+						list.scrollIntoView({"block": "end" });
+				} else
 					list.style.display = "none";
 			}
 		};
